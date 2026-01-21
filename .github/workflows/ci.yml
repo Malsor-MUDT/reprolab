@@ -1,0 +1,40 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run tests
+        run: |
+          echo "🚀 Running tests..."
+          cd tests
+          chmod +x run_all_tests.sh
+          ./run_all_tests.sh
+          
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Build Docker image
+        run: |
+          echo "🏗️ Building Docker image..."
+          cd src
+          docker build -t reprolab:latest .
+          
+      - name: Success
+        run: |
+          echo "🎉 CI pipeline completed successfully!"
+          echo "✅ Tests passed"
+          echo "✅ Docker builds"
