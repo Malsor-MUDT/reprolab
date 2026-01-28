@@ -61,40 +61,46 @@ jobs:
   
   # SIMPLIFIED CONDITION
   push-to-ghcr:
-    runs-on: ubuntu-latest
-    needs: [test, build]
-    # SIMPLER: Run on push to main (not PRs)
-    if: github.ref == 'refs/heads/main'
+  runs-on: ubuntu-latest
+  needs: [test, build]
+  if: github.ref == 'refs/heads/main'
+  
+  steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
     
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+  - name: Log in to GitHub Container Registry
+    uses: docker/login-action@v3
+    with:
+      registry: ghcr.io
+      username: ${{ github.actor }}
+      password: ${{ secrets.GITHUB_TOKEN }}
       
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+  - name: Build and push to GHCR
+    run: |
+      echo "📦 Building and pushing to GHCR..."
+      echo "Event: ${{ github.event_name }}"
+      echo "Ref: ${{ github.ref }}"
+      
+      # Convert repository name to lowercase for Docker compatibility
+      REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+      echo "Using lowercase repository name: $REPO_LOWER"
+      
+      cd src
+      
+      # Build with both latest and commit SHA tags
+      docker build \
+        -t ghcr.io/$REPO_LOWER:latest \
+        -t ghcr.io/$REPO_LOWER:${{ github.sha }} \
+        .
         
-    - name: Build and push
-      run: |
-        echo "📦 Building and pushing to GHCR..."
-        echo "Event: ${{ github.event_name }}"
-        echo "Ref: ${{ github.ref }}"
-        
-        cd src
-        
-        docker build \
-          -t ghcr.io/${{ github.repository }}:latest \
-          -t ghcr.io/${{ github.repository }}:${{ github.sha }} \
-          .
-          
-        docker push ghcr.io/${{ github.repository }}:latest
-        docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
-        
-        echo "✅ Pushed to GHCR successfully!"
-        echo "   Image: ghcr.io/${{ github.repository }}:latest"
+      # Push both tags
+      docker push ghcr.io/$REPO_LOWER:latest
+      docker push ghcr.io/$REPO_LOWER:${{ github.sha }}
+      
+      echo "✅ Pushed to GHCR successfully!"
+      echo "   Latest: ghcr.io/$REPO_LOWER:latest"
+      echo "   SHA: ghcr.io/$REPO_LOWER:${{ github.sha }}"
         
   success:
     runs-on: ubuntu-latest
