@@ -224,7 +224,7 @@ def system_info():
     """Detailed system and container information"""
     return jsonify({
         "application": {
-            "name": "ReproLab Flask Application",
+            "name": "ReproLab Flask Application Watchtower test",
             "version": app.config['VERSION'],
             "environment": os.getenv('FLASK_ENV', 'production'),
             "debug_mode": app.config['DEBUG']
@@ -258,7 +258,7 @@ def system_info():
 def cpu_stress():
     """
     Demonstrates resource limits by performing CPU-intensive calculation
-    Shows how Docker cgroups limit resource usage
+    Shows how Docker cgroups limit resource usage. All data is returned as JSON.
     """
     import time
     
