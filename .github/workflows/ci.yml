@@ -5,7 +5,6 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   test:
@@ -17,7 +16,7 @@ jobs:
       
     - name: Run tests
       run: |
-        echo "🚀 Running tests..."
+        echo "🚀 Running tests on ${{ github.event_name }} event..."
         cd tests
         python3 real_test_app.py
         
@@ -45,7 +44,6 @@ jobs:
         docker run -d --name test-container -p 5000:5000 reprolab:test
         sleep 10
         
-        # Test health endpoint
         if docker exec test-container curl -f http://localhost:5000/health; then
           echo "✅ Container is healthy"
         else
@@ -57,12 +55,12 @@ jobs:
         docker stop test-container
         docker rm test-container
   
-  # Push to GHCR - SIMPLIFIED
+  # Push to GHCR - ONLY on pushes to main (not PRs)
   push-to-ghcr:
     runs-on: ubuntu-latest
     needs: [test, build]
-    # Simplified condition - always run on main branch pushes
-    if: github.ref == 'refs/heads/main'
+    # Only push when code is pushed to main (after PR merge)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
@@ -80,30 +78,27 @@ jobs:
         echo "📦 Building and pushing to GHCR..."
         cd src
         
-        # Build with multiple tags
         docker build \
           -t ghcr.io/${{ github.repository }}:latest \
           -t ghcr.io/${{ github.repository }}:${{ github.sha }} \
           .
           
-        # Push both tags
         docker push ghcr.io/${{ github.repository }}:latest
         docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
         
         echo "✅ Pushed to GHCR successfully!"
-        echo "   Image: ghcr.io/${{ github.repository }}:latest"
-        echo "   Also tagged with commit: ${{ github.sha }}"
         
   success:
     runs-on: ubuntu-latest
-    needs: [test, build, push-to-ghcr]
+    needs: [test, build]
+    if: success()
     
     steps:
     - name: All checks passed
       run: |
-        echo "🎉🎉🎉 CI/CD PIPELINE SUCCESSFUL! 🎉🎉🎉"
-        echo ""
-        echo "✅ Tests passed"
-        echo "✅ Docker builds"
-        echo "✅ Container healthy"
-        echo "✅ Image pushed to GHCR"
+        echo "✅ CI checks passed!"
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "🚀 Ready for merge to main!"
+        else
+          echo "📦 Image pushed to GHCR"
+        fi
