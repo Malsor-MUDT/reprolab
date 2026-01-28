@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,7 +20,7 @@ jobs:
       
     - name: Run tests
       run: |
-        echo "🚀 Running tests on ${{ github.event_name }} event..."
+        echo "🚀 Running tests..."
         cd tests
         python3 real_test_app.py
         
@@ -55,12 +59,12 @@ jobs:
         docker stop test-container
         docker rm test-container
   
-  # Push to GHCR - ONLY on pushes to main (not PRs)
+  # SIMPLIFIED CONDITION
   push-to-ghcr:
     runs-on: ubuntu-latest
     needs: [test, build]
-    # Only push when code is pushed to main (after PR merge)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # SIMPLER: Run on push to main (not PRs)
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
@@ -76,6 +80,9 @@ jobs:
     - name: Build and push
       run: |
         echo "📦 Building and pushing to GHCR..."
+        echo "Event: ${{ github.event_name }}"
+        echo "Ref: ${{ github.ref }}"
+        
         cd src
         
         docker build \
@@ -87,18 +94,13 @@ jobs:
         docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
         
         echo "✅ Pushed to GHCR successfully!"
+        echo "   Image: ghcr.io/${{ github.repository }}:latest"
         
   success:
     runs-on: ubuntu-latest
     needs: [test, build]
-    if: success()
     
     steps:
     - name: All checks passed
       run: |
-        echo "✅ CI checks passed!"
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          echo "🚀 Ready for merge to main!"
-        else
-          echo "📦 Image pushed to GHCR"
-        fi
+        echo "🎉 CI completed!"
